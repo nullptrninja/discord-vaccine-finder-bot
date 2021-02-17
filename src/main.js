@@ -4,7 +4,7 @@ const fs = require("fs");
 const _ = require('underscore');
 
 const client = new Discord.Client();
-const settings = JSON.parse(fs.readFileSync("developer.settings.json"));
+const settings = JSON.parse(fs.readFileSync("local.settings.json"));
 const token = settings.token;
 
 const triggerWord = '!vaccine ';
