@@ -113,35 +113,9 @@ async function execFromCommandAsync(message, context) {
             //let summaryData = summary.join('\n\n');
             let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}\n`;
 
-            // Need to chunk things out cuz discord body limits = 2000
-            await message.channel.send(summaryHeader);
-
+            message.channel.send(summaryHeader);
             await message.channel.send(summary, { split: true });
-            // var bodyLength = 0;
-            // var sliceStart = 0;
-            // var sliceEnd = 1;
-            // for (var i = 0; i < summary.length; ++i) {
-            //     let lineBodySize = summary[i].length;
-            //     if (bodyLength + lineBodySize >= 2000) {
-            //         let summaryFragment = summary.slice(sliceStart, sliceEnd).join('\n');
-            //         await message.channel.send(summaryFragment);
-
-            //         bodyLength = lineBodySize;
-            //         sliceStart = i;
-            //         sliceEnd = i + 1;
-            //     }
-            //     else {
-            //         bodyLength += lineBodySize;
-            //         ++sliceEnd;                    
-            //     }
-            // }
-
-            //// Clear out buffer
-            // if (bodyLength > 0) {                
-            //     await message.channel.send(summary.slice(sliceStart, sliceEnd).join('\n'));
-            // }
-
-            await message.channel.send(`\n\nEnd of data.\nData last timestamp: ${contentsAsJson._timestamp}`);
+            message.channel.send(`\n\nEnd of data.\nData last timestamp: ${contentsAsJson._timestamp}`);
         });
     });
 }
