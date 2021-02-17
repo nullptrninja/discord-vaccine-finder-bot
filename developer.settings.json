@@ -1,0 +1,6 @@
+{
+    "vaccineApiHost": "localhost",
+    "vaccineApiPort": 3000,
+    "messageChunkSize": 7,
+    "token": "ODExMzQ5MTIyNjIzNDcxNjI2.YCw5wA.mZ6z9H2GUGA3SF6T_T01sI-kGBc"
+}
