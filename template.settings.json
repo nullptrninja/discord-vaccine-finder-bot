@@ -1,6 +1,5 @@
 {
     "vaccineApiHost": "localhost",
     "vaccineApiPort": 3000,
-    "messageChunkSize": 7,
     "token": "TOKEN HERE"
 }
