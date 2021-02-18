@@ -16,13 +16,18 @@ To verify things are working, you can run a simple command to verify it's respon
 This will ensure that the bot can talk to the API server and you should see some data come back to the channel.
   
 ## Usage
-The bot has a very structure command parser, the general format is:  
+The bot has a very structured command parser, the general format is:  
 `!vaccine COMMAND PARAM1 ... PARAM_N`  
 Certain commands require more than one parameter; all parameters are separated by a space.  
 
 ## Commands
 These are the available commands you can execute within Discord:  
+`schedules`  
+`list`  
+`help`  
   
+## Here are the scenarios in which you would use these commands:  
+
 ### List vaccine schedules by provider and state  
 `!vaccine schedules {provider} {state}`  
 **provider**: one of the supported providers. You can get a list of these using `list providers` command (see below).  
@@ -47,4 +52,12 @@ Shows a list of commands you can use.
 ## Shortcuts
 One of the most common actions will be to list providers by state/city. For that, the bot has a short-form command:  
 `!vac {provider} {state} {city}`  
-Instead of `!vaccine` being the trigger word, we use `!vac`. The `provider`, `state` parameters are still required but `city` remains options. This is just an alias for the `schedules` command, so if you goof up the error message will reference the `schedules` command anyway.
+
+Instead of `!vaccine` being the trigger word, we use `!vac`. The `provider`, `state` parameters are still required but `city` remains optional. This is just an alias for the `schedules` command, so if you goof up the error message will reference the `schedules` command anyway.
+
+## Notes
+Because of the structured command parsing, you might write something that looks silly but for now that's just how it is. Here's a list of odd quirks so far:  
+  
+ 1. When using the `nys` provider, it's fairly obvious that your state is `NY` but you still need to specify _something_ as the state since the `schedules` command requires a state to be specified. Here's how that looks:  
+    `!vaccine schedules nys ny`  
+  However, for `nys` we force the state to be `ny` internally, so you can write literally anything in that parameter: `!vaccine schedules nys derp` and it'll be okay. The `city` parameter remains the same though, so you can still specify a city with a non-sense state: `!vaccine schedules nys derp queens`.
