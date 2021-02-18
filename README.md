@@ -3,7 +3,7 @@ Integrates https://github.com/nullptrninja/vaccine-provider-api with Discord so 
 
 ## Installation
 Better installation instructions are coming later, for now you can install manually by:
-1. You will need `https://github.com/nullptrninja/vaccine-provider-api` installed first. Follow those instructions to get that server running.
+1. You will need https://github.com/nullptrninja/vaccine-provider-api installed first. Follow those instructions to get that server running.
 2. Pull down this repo and make a copy of `template.settings.json` and name the file `production.settings.json`
 3. Open `production.settings.json` and set the host and port to the address of the running `vaccine-provider-api` server.
 4. Set your Discord Bot token in the `token` field.
@@ -60,4 +60,4 @@ Because of the structured command parsing, you might write something that looks 
   
  1. When using the `nys` provider, it's fairly obvious that your state is `NY` but you still need to specify _something_ as the state since the `schedules` command requires a state to be specified. Here's how that looks:  
     `!vaccine schedules nys ny`  
-  However, for `nys` we force the state to be `ny` internally, so you can write literally anything in that parameter: `!vaccine schedules nys derp` and it'll be okay. The `city` parameter remains the same though, so you can still specify a city with a non-sense state: `!vaccine schedules nys derp queens`.
+  However, for `nys` we force the state to be `ny` internally, so you can write literally anything in that parameter: `!vaccine schedules nys derp` and it'll be okay. The `city` parameter remains the same though, so you can still specify a city with a nonsense state: `!vaccine schedules nys derp queens`.
