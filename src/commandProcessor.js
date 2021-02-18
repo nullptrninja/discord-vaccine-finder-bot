@@ -24,7 +24,8 @@ class CommandProcessor {
             helpText: `Usage: *${CommandProcessor.longTriggerWord}${CommandProcessor.helpCommand}* [command_name]\n
 \`\`\`Available commands:\n
 ${CommandProcessor.listCommand}: List vaccine providers\n
-${CommandProcessor.schedulesCommand}: Shows vaccine availability by provider and state\`\`\``
+${CommandProcessor.schedulesCommand}: Shows vaccine availability by provider and state\`\`\`\n
+You can also DM me and run these commands in private at any time too.`
         },
         {
             name: CommandProcessor.listCommand,

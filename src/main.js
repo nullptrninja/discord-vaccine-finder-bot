@@ -36,6 +36,7 @@ function executeCommand(fullCommandString, channel) {
 
 async function startHeartbeatTimer() {
     if (settings.heartbeatInterval != 0) {
+        console.log('Starting heartbeat timer');
         var channel = await client.channels.fetch(settings.heartbeatToChannelId);
 
         if (channel) {
