@@ -2,147 +2,112 @@ const http = require('http');
 const Discord = require("discord.js");
 const fs = require("fs");
 const _ = require('underscore');
+const CommandProcessor = require('./commandProcessor');
 const CommandParser = require('./commandParser');
 
 const client = new Discord.Client();
 const settings = JSON.parse(fs.readFileSync("./production.settings.json"));
 const token = settings.token;
+const cmdProcessor = new CommandProcessor(settings);
+const cmdParser = new CommandParser(cmdProcessor);
 
-const longTriggerWord = '!vaccine ';
-const shortTriggerWord = '!vac ';
-const helpCommand = 'help';
-const listCommand = 'list';
-const schedulesCommand = 'schedules';
-
-const cmdletDefinitions = [
-    {
-        name: helpCommand,
-        params: [
-            { name: 'command', isRequired: false, isSwitch: false, isWildcard: true, position: 0 }
-        ],
-        asyncHandler: execHelpCommandAsync,
-        helpText: `Usage: *${longTriggerWord}${helpCommand}* [command_name]\n\`\`\`Available commands:\n${listCommand}: List vaccine providers\n${schedulesCommand}: Shows vaccine availability by provider and state\`\`\``
-    },
-    {
-        name: listCommand,
-        params: [
-            { name: 'providers', isRequired: true, isSwitch: true, isWildcard: false, position: 0 }
-        ],
-        asyncHandler: execListCommandAsync,
-        helpText: `Usage: *${longTriggerWord}${listCommand}* \`providers\`\nList all of the available vaccine providers this bot currently supports.`
-    },
-    {
-        name: schedulesCommand,
-        params: [
-            { name: 'provider', isRequired: true, isSwitch: false, isWildcard: false, position: 0 },
-            { name: 'state', isRequired: true, isSwitch: false, isWildcard: false, position: 1 },
-            { name: 'city', isRequired: false, isSwitch: false, isWildcard: true, position: 2 },
-        ],
-        asyncHandler: execFromCommandAsync,
-        helpText: `Usage: *${longTriggerWord} ${schedulesCommand}* \`provider_name\` \`2_digit_state\` [\`city name\`]\nLists availability from a specific provider in a state and city. Type \`${longTriggerWord}${listCommand} providers\` for a list of valid providers.`
-    }
-];
+var activeTimers = {};
 
 function isLongTriggerWord(content) {
-    return content.toLowerCase().startsWith(longTriggerWord);
+    return content.toLowerCase().startsWith(CommandProcessor.longTriggerWord);
 }
 
 function isShortTriggerWord(content) {
-    return content.toLowerCase().startsWith(shortTriggerWord);
+    return content.toLowerCase().startsWith(CommandProcessor.shortTriggerWord);
 }
 
-function getCmdletDefinition(cmdletName) {
-    let cmdletToLower = cmdletName.toLowerCase();
-    return _.find(cmdletDefinitions, function(cmd) {
-        return cmd.name === cmdletToLower;
-    });
-}
-
-function normalizeUrlPathParams(path) {
-    // Technically we can just url encode, but i wanted to keep the URLs looking cleaner for ease of use. So we do some light normalization here.
-    return path.replace(' ', '_');
-}
-
-async function execHelpCommandAsync(message, context) {
-    if (context.params.providers) {
-        // TODO: List providers from API
-    }
-    else if (context.params.command) {
-        let commandName = context.params.command;
-        let cmdlet = getCmdletDefinition(commandName);
-        if (cmdlet) {
-            message.channel.send(cmdlet.helpText);
-        }
-        else {
-            message.channel.send(`The command ${commandName} does not exist. Type ${longTriggerWord} ${helpCommand} (without any other words after it) to get a list of commands.`);
-        }
+function executeCommand(fullCommandString, channel) {
+    var parseResults = cmdParser.parseCommandTokens(fullCommandString);
+    if (parseResults.errorMessage) {
+        throw parseResults.errorMessage;
     }
     else {
-        // Show commands
-        message.channel.send(context.cmdlet.helpText);
+        // Probably stems from some of initially bad design, but since the handler points
+        // back to cmdProc's callbacks and is async, 'this' becomes not-the-cmdproc. So as
+        // a hack for now, pass in cmdProc until we can find time to redo this design.
+        parseResults.cmdlet.asyncHandler(channel, parseResults, settings, cmdProcessor);
     }
 }
 
-async function execListCommandAsync(message, context) {
-    let showProviders = context.params['providers'];
-    // List other things here
+async function startHeartbeatTimer() {
+    if (settings.heartbeatInterval != 0) {
+        var channel = await client.channels.fetch(settings.heartbeatToChannelId);
 
-    if (showProviders) {
-        let path = '/list/providers';
-        
+        if (channel) {
+            setInterval(() => {
+                channel.send(':heart: I\'m still alive.');
+            }, settings.heartbeatInterval);
+        }
+        else {
+            console.log(`Unable to find channel ${settings.polling.postToChannelId} when attempting to start heartbeat timer`);
+        }
+    }
+}
+
+function startPollingTimers() {
+    if (settings.polling.enabled === true) {
+        console.log('Starting polling timers');
+
+        let path = '/list/providers';            
         let requestOptions = {
             host: settings.vaccineApiHost,
             port: settings.vaccineApiPort,
             path: path
         };
 
+        console.log('Retrieving list of providers for per-provider poll timers...');
         http.get(requestOptions, function(response) {
-            response.on('data', function(contents) {
-                var contentAsJsonArray = JSON.parse(contents);        // it's an array
-                var quotedNames = _.map(contentAsJsonArray, function(n) {
-                    return `\`${n}\``;
-                }).join('\n');
+            response.on('data', async function(contents) {
+                var providers = JSON.parse(contents);        // it's an array
+                var channel = await client.channels.fetch(settings.polling.postToChannelId);
 
-                message.channel.send(`Here are the current providers we can pull data from:\n${quotedNames}`);
+                if (channel) {
+                    providers.forEach(providerName => {                        
+                        var pollerSettings = settings.polling[providerName];
+                        console.log(`\tStarting polling timer for ${providerName}, every ${pollerSettings.rate} ms`);
+
+                        if (pollerSettings) {
+                            var timer = setInterval(() => {
+                                let targetChannel = channel;        // Maybe not needed to cache these
+                                let cmds = pollerSettings.commands;
+                                
+                                cmds.forEach(cmd => {
+                                    try {
+                                        executeCommand(cmd, targetChannel);
+                                    }
+                                    catch(errmsg) {
+                                        console.log(`Poller exec for command: [${cmd}] failed.`);
+                                    }
+                                });
+                            }, pollerSettings.rate);
+
+                            // Store the timer
+                            activeTimers[providerName] = timer;
+                        }
+                    });
+                }
+                else {
+                    console.log(`Unable to find channel ${settings.polling.postToChannelId} when attempting to start polling timers`);
+                }
             })
-        });
+        });        
+    }
+    else {
+        console.log('Polling disabled, nothing started');
     }
 }
 
-async function execFromCommandAsync(message, context) {
-    // Calls the /availability/provider/state/city API
-    let provider = context.params['provider'];
-    let state = context.params['state'];
-    let city = context.params['city'] || ``;
-    let path = normalizeUrlPathParams(`/available/${provider}/${state}/${city}`);
-    
-    let requestOptions = {
-        host: settings.vaccineApiHost,
-        port: settings.vaccineApiPort,
-        path: path
-    };
-
-    http.get(requestOptions, function(response) {
-        response.on('data', async function(contents) {
-            var contentsAsJson = JSON.parse(contents);
-
-            // Pretty it up for discord
-            let summary = _.map(contentsAsJson._siteData, function(site) {
-                let preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
-                let appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
-                return `\n${preCursor}${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
-            })
-
-            let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}\n`;
-
-            await message.channel.send(summaryHeader + summary, { split: true });
-            message.channel.send(`\nData timestamp: ${contentsAsJson._timestamp}`);
-        });
-    });
-}
 
 client.once("ready", () => {
     console.log("Ready to help you get immunized!");
+
+    startPollingTimers();
+    startHeartbeatTimer();
 });
 
 client.on("message", message => {
@@ -154,21 +119,20 @@ client.on("message", message => {
 
     if (isShortTriggerWord(inputCommand)) {
         // rewrite the command to imply the "schedules" action
-        inputCommand = inputCommand.replace(shortTriggerWord, `${longTriggerWord}${schedulesCommand} `);
+        inputCommand = inputCommand.replace(CommandProcessor.shortTriggerWord, `${CommandProcessor.longTriggerWord}${CommandProcessor.schedulesCommand} `);
     }
 
-    // Parse content in to commands
     if (!isLongTriggerWord(inputCommand)) {
         // NOOP
         return;
     }
 
-    var parseResults = CommandParser.parseCommandTokens(inputCommand, cmdletDefinitions);
-    if (parseResults.errorMessage) {
-        message.channel.send(parseResults.errorMessage);
+    try {
+        executeCommand(inputCommand, message.channel);
     }
-    else {
-        parseResults.cmdlet.asyncHandler(message, parseResults);
+    catch(errmsg) {
+        console.log(errmsg);
+        message.channel.send(errmsg);
     }
 });
 
