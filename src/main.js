@@ -21,7 +21,7 @@ const cmdletDefinitions = [
             { name: 'command', isRequired: false, isSwitch: false, isWildcard: true, position: 0 }
         ],
         asyncHandler: execHelpCommandAsync,
-        helpText: `Usage: *${longTriggerWord} ${helpCommand}* [command_name]\n\`\`\`Available commands:\n${listCommand}: List vaccine providers\n${schedulesCommand}: Shows vaccine availability by provider and state\`\`\``
+        helpText: `Usage: *${longTriggerWord}${helpCommand}* [command_name]\n\`\`\`Available commands:\n${listCommand}: List vaccine providers\n${schedulesCommand}: Shows vaccine availability by provider and state\`\`\``
     },
     {
         name: listCommand,
@@ -29,7 +29,7 @@ const cmdletDefinitions = [
             { name: 'providers', isRequired: true, isSwitch: true, isWildcard: false, position: 0 }
         ],
         asyncHandler: execListCommandAsync,
-        helpText: `Usage: *${longTriggerWord} ${listCommand}* \`providers\`\nList all of the available vaccine providers this bot currently supports.`
+        helpText: `Usage: *${longTriggerWord}${listCommand}* \`providers\`\nList all of the available vaccine providers this bot currently supports.`
     },
     {
         name: schedulesCommand,
@@ -39,7 +39,7 @@ const cmdletDefinitions = [
             { name: 'city', isRequired: false, isSwitch: false, isWildcard: true, position: 2 },
         ],
         asyncHandler: execFromCommandAsync,
-        helpText: `Usage: *${longTriggerWord} ${schedulesCommand}* \`provider_name\`\nLists availability from a specific provider in a state and city. Type \`${longTriggerWord} ${listCommand} providers\` for a list of valid providers.`
+        helpText: `Usage: *${longTriggerWord} ${schedulesCommand}* \`provider_name\` \`2_digit_state\` [\`city name\`]\nLists availability from a specific provider in a state and city. Type \`${longTriggerWord}${listCommand} providers\` for a list of valid providers.`
     }
 ];
 
@@ -84,7 +84,29 @@ async function execHelpCommandAsync(message, context) {
 }
 
 async function execListCommandAsync(message, context) {
+    let showProviders = context.params['providers'];
+    // List other things here
 
+    if (showProviders) {
+        let path = '/list/providers';
+        
+        let requestOptions = {
+            host: settings.vaccineApiHost,
+            port: settings.vaccineApiPort,
+            path: path
+        };
+
+        http.get(requestOptions, function(response) {
+            response.on('data', function(contents) {
+                var contentAsJsonArray = JSON.parse(contents);        // it's an array
+                var quotedNames = _.map(contentAsJsonArray, function(n) {
+                    return `\`${n}\``;
+                }).join('\n');
+
+                message.channel.send(`Here are the current providers we can pull data from:\n${quotedNames}`);
+            })
+        });
+    }
 }
 
 async function execFromCommandAsync(message, context) {
@@ -98,7 +120,7 @@ async function execFromCommandAsync(message, context) {
         host: settings.vaccineApiHost,
         port: settings.vaccineApiPort,
         path: path
-    }
+    };
 
     http.get(requestOptions, function(response) {
         response.on('data', async function(contents) {
@@ -106,16 +128,15 @@ async function execFromCommandAsync(message, context) {
 
             // Pretty it up for discord
             let summary = _.map(contentsAsJson._siteData, function(site) {
-                let appointmentString = site._hasAppointmentsAvailable ? `[Appointments available!](${site._bookingUrl})` : `No appointments available (${site._status})`;
-                return `  ${site._siteName} - ${site._city}, ${site._state} -> ${appointmentString}`;            
+                let preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
+                let appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
+                return `\n${preCursor}${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
             })
 
-            //let summaryData = summary.join('\n\n');
             let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}\n`;
 
-            message.channel.send(summaryHeader);
-            await message.channel.send(summary, { split: true });
-            message.channel.send(`\n\nEnd of data.\nData last timestamp: ${contentsAsJson._timestamp}`);
+            await message.channel.send(summaryHeader + summary, { split: true });
+            message.channel.send(`\nData timestamp: ${contentsAsJson._timestamp}`);
         });
     });
 }
