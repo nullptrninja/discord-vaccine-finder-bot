@@ -1,5 +1,5 @@
 {
-  "name": "discord-vaccine-bot",
+  "name": "discord-vaccine-finder-bot",
   "version": "1.0.0",
   "description": "Allows discord users to query the vaccine provider API",
   "main": "./src/main.js",
