@@ -3,10 +3,10 @@
     "vaccineApiPort": 3000,
     "token": "TOKEN HERE",
     "heartbeatInterval": 7200000,
-    "heartbeatToChannelId": "811415818595860491",
+    "heartbeatToChannelId": "0",
     "polling": {
         "enabled": true,
-        "postToChannelId": "811415818595860491",
+        "postToChannelId": "0",
         "cvs": {
             "rate": 3600000,
             "commands": [
