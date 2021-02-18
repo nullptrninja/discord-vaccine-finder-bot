@@ -1,21 +1,17 @@
 const _ = require('underscore');
+const CommandProcessor = require('./commandProcessor');
 
-// Just here to declutter main, we still need the cmdletDefinitions to be passed in
 class CommandParser {
-    // Sorry for the dampness. We'll sort this out later
-    static getCmdletDefinition(cmdletName, cmdletDefinitions) {
-        let cmdletToLower = cmdletName.toLowerCase();
-        return _.find(cmdletDefinitions, function(cmd) {
-            return cmd.name === cmdletToLower;
-        });
+    constructor(commandProcessor) {
+        this._commandProcessor = commandProcessor;
     }
 
-    static parseCommandTokens(fullContentString, cmdletDefinitions) {
+    parseCommandTokens(fullContentString) {
         let tokens = fullContentString.split(' ');
 
         // First token is triggerCommand, we don't need to validate that again so skip it.
         if (tokens.length > 1) {
-            let cmdlet = this.getCmdletDefinition(tokens[1], cmdletDefinitions);
+            let cmdlet = this._commandProcessor.getCmdletDefinition(tokens[1]);
             if (cmdlet) {            
                 let paramTokens = tokens.slice(2);
                 let requiredParams = _.filter(cmdlet.params, function(c) { return c.isRequired === true; });            
@@ -76,10 +72,10 @@ class CommandParser {
                 };
             }
 
-            return { errorMessage: `We don\'t recognize that command. Type \`${triggerWord} ${helpCommand}\` for a list of commands.` };
+            return { errorMessage: `We don\'t recognize that command. Type \`${CommandProcessor.longTriggerWord}${CommandProcessor.helpCommand}\` for a list of commands.` };
         }
         else {
-            return { errorMessage: `You need to specify a command. Type \`${triggerWord} ${helpCommand}\` for a list of commands.` };
+            return { errorMessage: `You need to specify a command. Type \`${CommandProcessor.longTriggerWord}${CommandProcessor.helpCommand}\` for a list of commands.` };
         }
     }
 }
