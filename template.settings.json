@@ -2,19 +2,19 @@
     "vaccineApiHost": "localhost",
     "vaccineApiPort": 3000,
     "token": "TOKEN HERE",
-    "heartbeatInterval": 0,
+    "heartbeatInterval": 7200000,
     "heartbeatToChannelId": "811415818595860491",
     "polling": {
         "enabled": true,
         "postToChannelId": "811415818595860491",
         "cvs": {
-            "rate": 900000,
+            "rate": 3600000,
             "commands": [
                 "!vaccine onlyAvailableSchedules cvs ny"
             ]
         },
         "nys": {
-            "rate": 900000,
+            "rate": 3600000,
             "commands": [
                 "!vaccine onlyAvailableSchedules nys ny"
             ]
