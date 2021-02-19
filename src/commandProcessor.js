@@ -167,7 +167,7 @@ Lists availability from a specific provider in a state and city. Type \`${Comman
                 if (availableSites.length > 0) {
                     let summary = _.map(availableSites, function(site) {                    
                         let appointmentString = `**Appointments available!** (${site._bookingUrl})`;
-                        return `\n${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
+                        return `\n> ${site._siteName}\n> **${site._city.toUpperCase()}**, ${site._state} / ${appointmentString}\n`;
                     });
         
                     let summaryHeader = `\nAppointment statuses as of ${contentsAsJson._timestamp} for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
