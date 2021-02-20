@@ -125,7 +125,19 @@ Lists availability from a specific provider in a state and city. Type \`${Comman
     
         http.get(requestOptions, function(response) {
             response.on('data', async function(contents) {
-                var contentsAsJson = JSON.parse(contents);
+                if (!contents) {
+                    console.log(`Requesting schedule from: ${requestOptions.host}:${requestOptions.port}/${requestOptions.path} returned no data`);
+                    return;
+                }
+
+                var contentsAsJson;
+                try {
+                    contentsAsJson = JSON.parse(contents);
+                }
+                catch(err) {
+                    console.log(`Requesting schedule from: ${requestOptions.host}:${requestOptions.port}/${requestOptions.path} returned non-JSON data`);
+                    return;
+                }
     
                 // Pretty it up for discord
                 let summary = _.map(contentsAsJson._siteData, function(site) {
@@ -139,6 +151,10 @@ Lists availability from a specific provider in a state and city. Type \`${Comman
                 await channel.send(summaryHeader + summary, { split: true });
                 channel.send(`\nData timestamp: ${contentsAsJson._timestamp}`);
             });
+
+            response.on('error', function(err) {
+                console.log(`Error requesting schedule from: ${requestOptions.host}:${requestOptions.port}/${requestOptions.path}: ${err}`);
+            })
         });
     }
 

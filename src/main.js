@@ -11,6 +11,7 @@ const token = settings.token;
 const cmdProcessor = new CommandProcessor(settings);
 const cmdParser = new CommandParser(cmdProcessor);
 
+const minimumHeartbeatMs = 30000;
 var activeTimers = {};
 
 function isLongTriggerWord(content) {
@@ -35,7 +36,7 @@ function executeCommand(fullCommandString, channel) {
 }
 
 async function startHeartbeatTimer() {
-    if (settings.heartbeatInterval != 0) {
+    if (settings.heartbeatInterval >= minimumHeartbeatMs) {
         console.log('Starting heartbeat timer');
         var channel = await client.channels.fetch(settings.heartbeatToChannelId);
 
@@ -47,6 +48,9 @@ async function startHeartbeatTimer() {
         else {
             console.log(`Unable to find channel ${settings.polling.postToChannelId} when attempting to start heartbeat timer`);
         }
+    }
+    else {
+        console.log(`Heartbeat disabled; must be greater than or equal to ${minimumHeartbeatMs}`);
     }
 }
 
