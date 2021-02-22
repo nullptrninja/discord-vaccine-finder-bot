@@ -6,10 +6,11 @@ Better installation instructions are coming later, for now you can install manua
 1. You will need https://github.com/nullptrninja/vaccine-provider-api installed first. Follow those instructions to get that server running.
 2. Pull down this repo and make a copy of `template.settings.json` and name the file `production.settings.json`
 3. Open `production.settings.json` and set the host and port to the address of the running `vaccine-provider-api` server.
-4. Set your Discord Bot token in the `token` field.
-5. Add your bot to the channel of your choice.
-6. Run `npm install`
-7. Run `node ./src/main.js`
+5. Set your Discord Bot token in the `token` field.
+6. Set the Channel Id to the channel of choice. There are 2 channel Id fields, one pertains to heartbeats and the other is the actual information. To disable heartbats, set the rate to 0.
+8. Add your bot to the channel of your choice.
+9. Run `npm install`
+10. Run `node ./src/main.js`
   
 To verify things are working, you can run a simple command to verify it's responding:
 `!vaccine schedules cvs ny`  
