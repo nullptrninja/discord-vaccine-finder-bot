@@ -9,6 +9,7 @@
   "author": "Brian Li",
   "license": "ISC",
   "dependencies": {
+    "axios": "^0.21.1",
     "discord.js": "^12.5.1",
     "underscore": "^1.12.0"
   }

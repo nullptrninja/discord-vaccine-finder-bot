@@ -1,4 +1,4 @@
-const http = require('http');
+const axios = require('axios');
 const _ = require('underscore');
 
 class CommandProcessor {
@@ -89,24 +89,25 @@ Lists availability from a specific provider in a state and city. Type \`${Comman
         // TODO: List other things here
     
         if (showProviders) {
-            let path = '/list/providers';
-            
-            let requestOptions = {
-                host: settings.vaccineApiHost,
-                port: settings.vaccineApiPort,
-                path: path
-            };
+            const queryUrl = `http://${settings.vaccineApiHost}:${settings.vaccineApiPort}/list/providers`;
+            var result = null;
+            result = await axios.get(queryUrl)
+                                    .catch(function(err) {
+                                        console.log(`execListCommandAsync threw error while fetching ${queryUrl}: ${err}`);
+                                        result = null;
+                                    });
     
-            http.get(requestOptions, function(response) {
-                response.on('data', function(contents) {
-                    var contentAsJsonArray = JSON.parse(contents);        // it's an array
+            if (result && result.status === 200 && result.data) {
+                var contentAsJsonArray = result.data;        // it's an array
                     var quotedNames = _.map(contentAsJsonArray, function(n) {
                         return `\`${n}\``;
                     }).join('\n');
     
                     channel.send(`Here are the current providers we can pull data from:\n${quotedNames}`);
-                })
-            });
+            }
+            else {
+                console.log(`execListCommandAsync: ${queryUrl} returned but status was not successful: ${result}`);
+            }
         }
     }
     
@@ -116,46 +117,32 @@ Lists availability from a specific provider in a state and city. Type \`${Comman
         let state = context.params['state'];
         let city = context.params['city'] || '';
         let path = CommandProcessor.normalizeUrlPathParams(`/schedules/${provider}/${state}/${city}`);
-        
-        let requestOptions = {
-            host: settings.vaccineApiHost,
-            port: settings.vaccineApiPort,
-            path: path
-        };
-    
-        http.get(requestOptions, function(response) {
-            response.on('data', async function(contents) {
-                if (!contents) {
-                    console.log(`Requesting schedule from: ${requestOptions.host}:${requestOptions.port}/${requestOptions.path} returned no data`);
-                    return;
-                }
 
-                var contentsAsJson;
-                try {
-                    contentsAsJson = JSON.parse(contents);
-                }
-                catch(err) {
-                    console.log(`Requesting schedule from: ${requestOptions.host}:${requestOptions.port}/${requestOptions.path} returned non-JSON data`);
-                    return;
-                }
-    
-                // Pretty it up for discord
-                let summary = _.map(contentsAsJson._siteData, function(site) {
-                    let preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
-                    let appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
-                    return `\n${preCursor}${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
-                })
-    
-                let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
-    
-                await channel.send(summaryHeader + summary, { split: true });
-                channel.send(`\nData timestamp: ${contentsAsJson._timestamp}`);
-            });
+        const queryUrl = `http://${settings.vaccineApiHost}:${settings.vaccineApiPort}${path}`;
+        var result = null;
+        result = await axios.get(queryUrl)
+                            .catch(function(err) {
+                                console.log(`execSchedulesCommandAsync threw error while fetching ${queryUrl}: ${err}`);
+                                result = null;
+                            });
 
-            response.on('error', function(err) {
-                console.log(`Error requesting schedule from: ${requestOptions.host}:${requestOptions.port}/${requestOptions.path}: ${err}`);
+        if (result && result.status === 200 && result.data) {
+            const contents = result.data;
+
+            let summary = _.map(contents._siteData, function(site) {
+                let preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
+                let appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
+                return `\n${preCursor}${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
             })
-        });
+
+            let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
+
+            await channel.send(summaryHeader + summary, { split: true });
+            channel.send(`\nData timestamp: ${contents._timestamp}`);
+        }
+        else {
+            console.log(`execSchedulesCommandAsync: ${queryUrl} returned but status was not successful: ${result}`);
+        }
     }
 
     async execOnlyAvailableSchedulesCommandAsync(channel, context, settings, cmdProc) {
@@ -163,34 +150,33 @@ Lists availability from a specific provider in a state and city. Type \`${Comman
         let provider = context.params['provider'];
         let state = context.params['state'];
         let city = context.params['city'] || '';
-        let path = CommandProcessor.normalizeUrlPathParams(`/schedules/${provider}/${state}/${city}`);
-        
-        let requestOptions = {
-            host: settings.vaccineApiHost,
-            port: settings.vaccineApiPort,
-            path: path
-        };
-    
-        http.get(requestOptions, function(response) {
-            response.on('data', async function(contents) {
-                var contentsAsJson = JSON.parse(contents);
-    
-                let availableSites = _.filter(contentsAsJson._siteData, function(site) {
-                    return site._hasAppointmentsAvailable === true;
-                });
-                console.log(`Available sites for ${provider}: ${availableSites.length}`);
+        let path = CommandProcessor.normalizeUrlPathParams(`/schedules/${provider}/${state}/${city}`);        
 
-                if (availableSites.length > 0) {
-                    let summary = _.map(availableSites, function(site) {                    
-                        let appointmentString = `**Appointments available!** (${site._bookingUrl})`;
-                        return `\n> ${site._siteName}\n> **${site._city.toUpperCase()}**, ${site._state} / ${appointmentString}\n`;
-                    });
-        
-                    let summaryHeader = `\nAppointment statuses as of ${contentsAsJson._timestamp} for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
-                    await channel.send(summaryHeader + summary, { split: true });                    
-                }
+        const queryUrl = `http://${settings.vaccineApiHost}:${settings.vaccineApiPort}${path}`;
+        var result = null;
+        result = await axios.get(queryUrl)
+                            .catch(function(err) {
+                                console.log(`execSchedulesCommandAsync threw error while fetching ${queryUrl}: ${err}`);
+                                result = null;
+                            });
+    
+        if (result && result.status === 200 && result.data) {
+            const contents = result.data;    
+            const availableSites = _.filter(contents._siteData, function(site) {
+                return site._hasAppointmentsAvailable === true;
             });
-        });
+            console.log(`Available sites for ${provider}: ${availableSites.length}`);
+
+            if (availableSites.length > 0) {
+                let summary = _.map(availableSites, function(site) {                    
+                    let appointmentString = `**Appointments available!** (${site._bookingUrl})`;
+                    return `\n> ${site._siteName}\n> **${site._city.toUpperCase()}**, ${site._state} / ${appointmentString}\n`;
+                });
+    
+                let summaryHeader = `\nAppointment statuses as of ${contents._timestamp} for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
+                await channel.send(summaryHeader + summary, { split: true });                    
+            }
+        }
     }
 }
 
