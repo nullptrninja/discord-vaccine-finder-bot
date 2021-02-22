@@ -2,7 +2,7 @@
     "vaccineApiHost": "localhost",
     "vaccineApiPort": 3000,
     "token": "TOKEN HERE",
-    "heartbeatInterval": 7200000,
+    "heartbeatInterval": 0,
     "heartbeatToChannelId": "0",
     "polling": {
         "enabled": true,
@@ -17,6 +17,14 @@
             "rate": 3600000,
             "commands": [
                 "!vaccine onlyAvailableSchedules nys ny"
+            ]
+        },
+        "nyc": {
+            "rate": 3600000,
+            "commands": [
+                "!vaccine onlyAvailableSchedules nyc ny brooklyn",
+                "!vaccine onlyAvailableSchedules nyc ny manhattan",
+                "!vaccine onlyAvailableSchedules nyc ny queens"
             ]
         }
     }
