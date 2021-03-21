@@ -117,7 +117,6 @@ dist
 .vscode-test
 
 # No dev files
-local.settings.json
-production.settings.json
+*production*.json
 
 # End of https://www.toptal.com/developers/gitignore/api/node

@@ -1,181 +1,118 @@
-const axios = require('axios');
 const _ = require('underscore');
 
 class CommandProcessor {
-    static longTriggerWord = '!vaccine ';
-    static shortTriggerWord = '!vac ';
-    static helpCommand = 'help';
-    static listCommand = 'list';
-    static schedulesCommand = 'schedules';
-    static onlyAvailableSchedules = 'onlyavailableschedules';
-
-    static normalizeUrlPathParams(path) {
-        // Technically we can just url encode, but i wanted to keep the URLs looking cleaner for ease of use. So we do some light normalization here.
-        return path.replace(' ', '_');
+    constructor(cmdlets, discordClient, settings) {
+        this._cmdlets = cmdlets;
+        this._discordClient = discordClient;
+        this._settings = settings;
     }
-
-    cmdletDefinitions = [
-        {
-            name: CommandProcessor.helpCommand,
-            params: [
-                { name: 'command', isRequired: false, isSwitch: false, isWildcard: true, position: 0 }
-            ],
-            asyncHandler: this.execHelpCommandAsync,
-            helpText: `Usage: *${CommandProcessor.longTriggerWord}${CommandProcessor.helpCommand}* [command_name]\n
-\`\`\`Available commands:\n
-${CommandProcessor.listCommand}: List vaccine providers\n
-${CommandProcessor.schedulesCommand}: Shows vaccine availability by provider and state\`\`\`\n
-You can also DM me and run these commands in private at any time too.`
-        },
-        {
-            name: CommandProcessor.listCommand,
-            params: [
-                { name: 'providers', isRequired: true, isSwitch: true, isWildcard: false, position: 0 }
-            ],
-            asyncHandler: this.execListCommandAsync,
-            helpText: `Usage: *${CommandProcessor.longTriggerWord}${CommandProcessor.listCommand}* \`providers\`\n
-List all of the available vaccine providers this bot currently supports.`
-        },
-        {
-            name: CommandProcessor.schedulesCommand,
-            params: [
-                { name: 'provider', isRequired: true, isSwitch: false, isWildcard: false, position: 0 },
-                { name: 'state', isRequired: true, isSwitch: false, isWildcard: false, position: 1 },
-                { name: 'city', isRequired: false, isSwitch: false, isWildcard: true, position: 2 },
-            ],
-            asyncHandler: this.execSchedulesCommandAsync,
-            helpText: `Usage: *${CommandProcessor.longTriggerWord} ${CommandProcessor.schedulesCommand}* \`provider_name\` \`2_digit_state\` [\`city name\`]\n
-Lists availability from a specific provider in a state and city. Type \`${CommandProcessor.longTriggerWord}${CommandProcessor.listCommand} providers\` for a list of valid providers.`
-        },
-        {
-            name: CommandProcessor.onlyAvailableSchedules,
-            params: [
-                { name: 'provider', isRequired: true, isSwitch: false, isWildcard: false, position: 0 },
-                { name: 'state', isRequired: true, isSwitch: false, isWildcard: false, position: 1 },
-                { name: 'city', isRequired: false, isSwitch: false, isWildcard: true, position: 2 },
-            ],
-            asyncHandler: this.execOnlyAvailableSchedulesCommandAsync,
-            helpText: `Internal command, no help available`
-        },
-    ]
 
     getCmdletDefinition(cmdletName) {
         let cmdletToLower = cmdletName.toLowerCase();
-        return _.find(this.cmdletDefinitions, function(cmd) {
+        return this._cmdlets.find(cmd => {
             return cmd.name === cmdletToLower;
         });
     }
 
-    async execHelpCommandAsync(channel, context, settings, cmdProc) {
-        if (context.params.command) {
-            // Show help for a specific command. Find the cmdlet definition and get its help text
-            let commandName = context.params.command;
-            let cmdlet = cmdProc.getCmdletDefinition(commandName);
+    async processCommand(userInput, srcChannel, messageContext = null) {
+        var parseResults = this._parseCommandTokens(userInput);
+        if (parseResults.errorMessage) {
+            throw parseResults.errorMessage;
+        }
+        else {
+            // Attach messageContext to parseResults if available
+            if (messageContext) {
+                parseResults.messageContext = messageContext;
+            }
+
+            await parseResults.cmdlet.asyncHandler(srcChannel, parseResults, this._discordClient, this);
+        }
+    }
+
+    _parseCommandTokens(fullContentString) {
+        let tokens = fullContentString.split(' ');
+
+        // First token is triggerCommand, we don't need to validate that again so skip it.
+        if (tokens.length > 1) {
+            let cmdlet = this.getCmdletDefinition(tokens[1]);
             if (cmdlet) {
-                channel.send(cmdlet.helpText);
+                let paramTokens = tokens.slice(2);
+                let requiredParams = _.uniq(cmdlet.params.filter(c => {
+                                                 return c.isRequired === true;
+                                            }),
+                                            function(param) {
+                                                 return param.position;
+                                            });
+
+                // Must meet minimum length requirements
+                if (paramTokens.length < requiredParams.length) {
+                    return { errorMessage: `The \`${cmdlet.name}\` command requires more parameters.` };
+                }
+
+                var paramsTable = {};
+                var globValue = null;
+                var globedParamName = null;
+                var captureRemainderAsGlob = false;
+                for (var i = 0; i < paramTokens.length; ++i) {
+                    let paramValue = paramTokens[i].toLowerCase();
+                    let paramValueNonNormalized = paramTokens[i];
+
+                    // If we're not globbing we read params as normal
+                    if (captureRemainderAsGlob === false) {
+                        // Find all applicable parameters at this position i
+                        let applicableParams = cmdlet.params.filter(p => { return p.position === i; });
+
+                        if (!applicableParams) {
+                            throw `Parameter: ${paramValue} is not applicable on position: ${i}.`
+                        }
+
+                        for (var k = 0; k < applicableParams.length; ++k) {
+                            let paramSpec = applicableParams[k];
+                            var assignedParamValue = null;
+
+                            if (paramSpec) {
+                                if (paramSpec.isGlob === false) {
+                                    if (paramSpec.isSwitch === true) {
+                                        // For switches, we'll just require you to match the name of the switch to turn it on.
+                                        assignedParamValue = paramSpec.name === paramValue ? true : false;
+                                    }
+                                    else {
+                                        assignedParamValue = paramValueNonNormalized;
+                                    }
+                                }
+                                else {
+                                    // Globs capture the remainder of the command as long string buffer. We ignore positional asserts after this point
+                                    captureRemainderAsGlob = true;
+                                    globedParamName = paramSpec.name;
+                                    globValue = [ paramValueNonNormalized ];
+                                    continue;
+                                }
+
+                                paramsTable[paramSpec.name] = assignedParamValue;
+                            }
+                        }
+                    }
+                    else {
+                        globValue.push(paramValueNonNormalized);
+                    }
+                }
+
+                // Concat the Glob
+                if (captureRemainderAsGlob === true) {
+                    paramsTable[globedParamName] = globValue.join(' ');
+                }
+
+                return {
+                    command: cmdlet.name,
+                    cmdlet: cmdlet,
+                    params: paramsTable
+                };
             }
-            else {
-                channel.send(`The command ${commandName} does not exist. Type ${CommandProcessor.longTriggerWord} ${CommandProcessor.helpCommand} (without any other words after it) to get a list of commands.`);
-            }
+
+            return { errorMessage: "We don\'t recognize that command." };
         }
         else {
-            // Show commands
-            channel.send(context.cmdlet.helpText);
-        }
-    }
-    
-    async execListCommandAsync(channel, context, settings, cmdProc) {
-        let showProviders = context.params['providers'];
-        // TODO: List other things here
-    
-        if (showProviders) {
-            const queryUrl = `http://${settings.vaccineApiHost}:${settings.vaccineApiPort}/list/providers`;
-            var result = null;
-            result = await axios.get(queryUrl)
-                                    .catch(function(err) {
-                                        console.log(`execListCommandAsync threw error while fetching ${queryUrl}: ${err}`);
-                                        result = null;
-                                    });
-    
-            if (result && result.status === 200 && result.data) {
-                var contentAsJsonArray = result.data;        // it's an array
-                    var quotedNames = _.map(contentAsJsonArray, function(n) {
-                        return `\`${n}\``;
-                    }).join('\n');
-    
-                    channel.send(`Here are the current providers we can pull data from:\n${quotedNames}`);
-            }
-            else {
-                console.log(`execListCommandAsync: ${queryUrl} returned but status was not successful: ${result}`);
-            }
-        }
-    }
-    
-    async execSchedulesCommandAsync(channel, context, settings, cmdProc) {
-        // Calls the /schedules/provider/state/city API
-        let provider = context.params['provider'];
-        let state = context.params['state'];
-        let city = context.params['city'] || '';
-        let path = CommandProcessor.normalizeUrlPathParams(`/schedules/${provider}/${state}/${city}`);
-
-        const queryUrl = `http://${settings.vaccineApiHost}:${settings.vaccineApiPort}${path}`;
-        var result = null;
-        result = await axios.get(queryUrl)
-                            .catch(function(err) {
-                                console.log(`execSchedulesCommandAsync threw error while fetching ${queryUrl}: ${err}`);
-                                result = null;
-                            });
-
-        if (result && result.status === 200 && result.data) {
-            const contents = result.data;
-
-            let summary = _.map(contents._siteData, function(site) {
-                let preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
-                let appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
-                return `\n${preCursor}${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
-            })
-
-            let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
-
-            await channel.send(summaryHeader + summary, { split: true });
-            channel.send(`\nData timestamp: ${contents._timestamp}`);
-        }
-        else {
-            console.log(`execSchedulesCommandAsync: ${queryUrl} returned but status was not successful: ${result}`);
-        }
-    }
-
-    async execOnlyAvailableSchedulesCommandAsync(channel, context, settings, cmdProc) {
-        // Calls the /schedules/provider/state/city API
-        let provider = context.params['provider'];
-        let state = context.params['state'];
-        let city = context.params['city'] || '';
-        let path = CommandProcessor.normalizeUrlPathParams(`/schedules/${provider}/${state}/${city}`);        
-
-        const queryUrl = `http://${settings.vaccineApiHost}:${settings.vaccineApiPort}${path}`;
-        var result = null;
-        result = await axios.get(queryUrl)
-                            .catch(function(err) {
-                                console.log(`execSchedulesCommandAsync threw error while fetching ${queryUrl}: ${err}`);
-                                result = null;
-                            });
-    
-        if (result && result.status === 200 && result.data) {
-            const contents = result.data;    
-            const availableSites = _.filter(contents._siteData, function(site) {
-                return site._hasAppointmentsAvailable === true;
-            });
-            console.log(`Available sites for ${provider}: ${availableSites.length}`);
-
-            if (availableSites.length > 0) {
-                let summary = _.map(availableSites, function(site) {                    
-                    let appointmentString = `**Appointments available!** (${site._bookingUrl})`;
-                    return `\n> ${site._siteName}\n> **${site._city.toUpperCase()}**, ${site._state} / ${appointmentString}\n`;
-                });
-    
-                let summaryHeader = `\nAppointment statuses as of ${contents._timestamp} for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
-                await channel.send(summaryHeader + summary, { split: true });                    
-            }
+            return { errorMessage: "You need to specify a command." };
         }
     }
 }

@@ -4,19 +4,24 @@
     "token": "TOKEN HERE",
     "heartbeatInterval": 0,
     "heartbeatToChannelId": "0",
+    "notificationsFilePath": "notifications.production.json",
+    "command": {
+        "longTriggerWord": "!vaccine ",
+        "shortTriggerWord": "!vac "
+    },
     "polling": {
-        "enabled": true,
+        "enabled": false,
         "postToChannelId": "0",
         "cvs": {
             "rate": 3600000,
             "commands": [
-                "!vaccine onlyAvailableSchedules cvs ny"
+                "!vaccine onlyAvailableSchedules cvs ny triggernotifynopost"
             ]
         },
         "nys": {
             "rate": 3600000,
             "commands": [
-                "!vaccine onlyAvailableSchedules nys ny"
+                "!vaccine onlyAvailableSchedules nys ny triggernotifynopost"
             ]
         },
         "nyc": {
