@@ -35,13 +35,13 @@ if you only want to be notified from a specific vaccine site.
 
         modeHandlers[stateParam] = function (t) {
             if (self._verifySingleString(t)) {
-                return self._readMultiString(t).join(' ');
+                return self._readSingleString(t);
             }
             return { error: 'value cannot be empty' };
         };
         modeHandlers[cityParam] = function (t) {
             if (self._verifySingleStringWithSpaces(t)) {
-                return self._readMultiString(t).join(' ');
+                return self._readSingleString(t);
             }
             return { error: 'value cannot be empty or contain multiple entries' };
         };
@@ -54,7 +54,7 @@ if you only want to be notified from a specific vaccine site.
         };
         modeHandlers[siteParam] = function (t) {
             if (self._verifySingleStringWithSpaces(t)) {
-                return self._readMultiString(t).join(' ');
+                return self._readSingleString(t);
             }
             return { error: 'value cannot be empty' };
         };
@@ -169,7 +169,7 @@ if you only want to be notified from a specific vaccine site.
             return false;
         }
 
-        return !trimmed.includes(', ');
+        return true;
     }
 
     _verifyMultiString(token) {

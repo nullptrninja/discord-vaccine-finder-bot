@@ -52,10 +52,14 @@ class OnlyAvailableSchedulesCommand {
                         const vaccineHash = helpers.generateVaccineHash(site._state, site._city, site._siteName);
                         const matchingEvents = self._notifications.findEventsByHash(vaccineHash);
 
+                        console.log(`Found ${matchingEvents.length} matching notification events for hash: ${vaccineHash}`);
                         matchingEvents.forEach(function(e) {
                             e.users.forEach(function(userId) {
                                 discordClient.users.fetch(userId, true)
-                                                    .then(u => u.send(`A vaccine may be available at: ${site._city}, ${site._state} -> ${site._siteName}\nBook at: ${site._bookingUrl}`));
+                                                    .then(u => {
+                                                        console.log(`Sending DM to user: ${u.id} for hash ${vaccineHash}`);
+                                                        u.send(`A vaccine may be available at: ${site._city}, ${site._state} -> ${site._siteName}\nBook at: ${site._bookingUrl}`);
+                                                    });
                             });
                         });
                     });
@@ -63,7 +67,7 @@ class OnlyAvailableSchedulesCommand {
 
                 // If we're triggering without post, then don't post anything to the stated channel
                 if (triggerNotifyNoPost === false) {
-                    let summaryHeader = `\nAppointment statuses as of ${contents._timestamp} for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
+                    let summaryHeader = `\nAppointment statuses as of ${contents._timestamp} for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\``;
                     await channel.send(summaryHeader + summary, { split: true });
                 }
             }

@@ -11,13 +11,18 @@ const helpers = {
         return `${nState}-${nCity}-${nSite}`;
     },
 
-    areVaccineHashesEqual(queryHash, staticHash) {
-        const nQueryHash = queryHash.toLowerCase();
-        if (nQueryHash.endsWith('*')) {
-            return staticHash.startsWith(nQueryHash.substring(0, nQueryHash.length - 1));
+    areVaccineHashesEqual(hash1, hash2) {
+        const nHash1 = hash1.toLowerCase();
+        const nHash2 = hash2.toLowerCase();
+        if (nHash1.endsWith('*')) {
+            return hash2.startsWith(nHash1.substring(0, nHash1.length - 1));
         }
 
-        return nQueryHash === staticHash;
+        if (nHash2.endsWith('*')) {
+            return hash1.startsWith(nHash2.substring(0, nHash2.length - 1));
+        }
+
+        return nHash1 === hash2;
     }
 }
 
