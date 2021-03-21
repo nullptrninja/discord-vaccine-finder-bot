@@ -1,38 +1,51 @@
 const http = require('http');
 const Discord = require("discord.js");
 const fs = require("fs");
-const _ = require('underscore');
+
+const NotificationsData = require('./notificationsData');
 const CommandProcessor = require('./commandProcessor');
-const CommandParser = require('./commandParser');
+const HelpCommand = require('./commands/helpCommand');
+const ListCommand = require('./commands/listCommand');
+const SchedulesCommand = require('./commands/schedulesCommand');
+const OnlyAvailableSchedulesCommand = require('./commands/onlyAvailableSchedulesCommand');
+const NotifyCommand = require('./commands/notifyCommand');
 
 const client = new Discord.Client();
 const settings = JSON.parse(fs.readFileSync("./production.settings.json"));
+const notifications = new NotificationsData(settings.notificationsFilePath)
 const token = settings.token;
-const cmdProcessor = new CommandProcessor(settings);
-const cmdParser = new CommandParser(cmdProcessor);
+
+const cmdletDefinitions = [
+    new HelpCommand(settings),
+    new ListCommand(settings),
+    new SchedulesCommand(settings),
+    new OnlyAvailableSchedulesCommand(settings, notifications),
+    new NotifyCommand(settings, notifications)
+];
+
+const cmdProcessor = new CommandProcessor(cmdletDefinitions, client, settings);
 
 const minimumHeartbeatMs = 30000;
 var activeTimers = {};
 
 function isLongTriggerWord(content) {
-    return content.toLowerCase().startsWith(CommandProcessor.longTriggerWord);
+    return content.toLowerCase().startsWith(settings.command.longTriggerWord);
 }
 
 function isShortTriggerWord(content) {
-    return content.toLowerCase().startsWith(CommandProcessor.shortTriggerWord);
+    return content.toLowerCase().startsWith(settings.command.shortTriggerWord);
 }
 
-function executeCommand(fullCommandString, channel) {
-    var parseResults = cmdParser.parseCommandTokens(fullCommandString);
-    if (parseResults.errorMessage) {
-        throw parseResults.errorMessage;
-    }
-    else {
-        // Probably stems from some of initially bad design, but since the handler points
-        // back to cmdProc's callbacks and is async, 'this' becomes not-the-cmdproc. So as
-        // a hack for now, pass in cmdProc until we can find time to redo this design.
-        parseResults.cmdlet.asyncHandler(channel, parseResults, settings, cmdProcessor);
-    }
+function executeCommand(fullCommandString, channel, messageContext = null) {
+    const dtNow = new Date();
+    cmdProcessor.processCommand(fullCommandString, channel, messageContext)
+        .then(function () {
+            console.log(`${dtNow.toISOString()}: Executed ${fullCommandString} successfully`);
+        })
+        .catch(async function (err) {
+            console.log(err);
+            channel.send(err);
+        });
 }
 
 async function startHeartbeatTimer() {
@@ -58,7 +71,7 @@ function startPollingTimers() {
     if (settings.polling.enabled === true) {
         console.log('Starting polling timers');
 
-        let path = '/list/providers';            
+        let path = '/list/providers';
         let requestOptions = {
             host: settings.vaccineApiHost,
             port: settings.vaccineApiPort,
@@ -72,7 +85,7 @@ function startPollingTimers() {
                 var channel = await client.channels.fetch(settings.polling.postToChannelId);
 
                 if (channel) {
-                    providers.forEach(providerName => {                        
+                    providers.forEach(providerName => {
                         var pollerSettings = settings.polling[providerName];
                         console.log(`\tStarting polling timer for ${providerName}, every ${pollerSettings.rate} ms`);
 
@@ -80,7 +93,7 @@ function startPollingTimers() {
                             var timer = setInterval(() => {
                                 let targetChannel = channel;        // Maybe not needed to cache these
                                 let cmds = pollerSettings.commands;
-                                
+
                                 cmds.forEach(cmd => {
                                     try {
                                         executeCommand(cmd, targetChannel);
@@ -100,7 +113,7 @@ function startPollingTimers() {
                     console.log(`Unable to find channel ${settings.polling.postToChannelId} when attempting to start polling timers`);
                 }
             })
-        });        
+        });
     }
     else {
         console.log('Polling disabled, nothing started');
@@ -119,12 +132,12 @@ client.on("message", message => {
     if (message.author.bot) {
         return;
     }
-    
+
     var inputCommand = message.content;
 
     if (isShortTriggerWord(inputCommand)) {
         // rewrite the command to imply the "schedules" action
-        inputCommand = inputCommand.replace(CommandProcessor.shortTriggerWord, `${CommandProcessor.longTriggerWord}${CommandProcessor.schedulesCommand} `);
+        inputCommand = inputCommand.replace(settings.command.shortTriggerWord, `${settings.command.longTriggerWord}schedules `);
     }
 
     if (!isLongTriggerWord(inputCommand)) {
@@ -133,7 +146,7 @@ client.on("message", message => {
     }
 
     try {
-        executeCommand(inputCommand, message.channel);
+        executeCommand(inputCommand, message.channel, message);
     }
     catch(errmsg) {
         console.log(errmsg);
