@@ -36,15 +36,16 @@ Lists availability from a specific provider in a state and city.`
             const contents = result.data;
 
             let summary = contents._siteData.map(function(site) {
-                let preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
-                let appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
-                return `\n${preCursor}${site._siteName} / ${site._city.toUpperCase()}, ${site._state} / ${appointmentString}`;
+                const preCursor = site._hasAppointmentsAvailable ? '>> ' : '|  ';
+                const appointmentString = site._hasAppointmentsAvailable ? `**Appointments available!** (${site._bookingUrl})` : `No appointments available (${site._status})`;
+                const city = site._city ? site._city.toUpperCase() : 'N/A';
+                return `\n${preCursor}${site._siteName} / ${city}, ${site._state} / ${appointmentString}`;
             })
 
             let summaryHeader = `\nAppointment statuses for \`${provider.toUpperCase()}\` sites in state: \`${state.toUpperCase()}\`, filtered by city: ${city.toUpperCase()}`;
 
             await channel.send(summaryHeader + summary, { split: true });
-            channel.send(`\nData timestamp: ${contents._timestamp}`);
+            channel.send(`\nNo timestamp available but we've finished listing appointments.`);
         }
         else {
             console.log(`execSchedulesCommandAsync: ${queryUrl} returned but status was not successful: ${result}`);
