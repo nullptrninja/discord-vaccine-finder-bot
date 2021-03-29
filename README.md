@@ -15,6 +15,12 @@ Better installation instructions are coming later, for now you can install manua
 To verify things are working, you can run a simple command to verify it's responding:
 `!vaccine schedules cvs ny`  
 This will ensure that the bot can talk to the API server and you should see some data come back to the channel.
+
+For Linux users, if you're running this on an separate system (like a Pi), you can detach from the process so you can log out of the SSH session safely:
+```
+node ./src/main.js &  
+disown -h <PID HERE>
+```
   
 ## Usage
 The bot has a very structured command parser, the general format is:  
