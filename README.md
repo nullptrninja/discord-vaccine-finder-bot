@@ -42,6 +42,16 @@ Same parameters as above with the addition of a _city_ filter; the name of the c
 `!vaccine list providers`  
 Shows a list of the available providers. You can use these values in place of any parameter that calls for a `provider`.  
 
+### Add a notification when vaccine is available
+`!vaccine notify -a add -s {state} -c {city} [-z {site name}]`
+This command format is different from the rest due to certain parsing requirements. The site parameter (`-z`) is optional. If omitted, the bot will DM you when any site in the specified state + city is available. State is the two-letter state code, while city is very specific to how certain providers list the city in their vaccination site addresses. You can add as many notifications as you'd like. If you want to only be notified if vaccines are available at a specific site, copy and paste the site's name (as listed via `!vaccine schedules` commnad) into the `-z` parameter.
+
+See below for more information on configuration to ensure this feature works.
+
+### Remove a notification
+`!vaccine notify -a del -s {state} -c {city} [-z {site name}]`
+This will remove a notification. It's the same command as `add` but with `del` instead. Currently there's no way to unsubscribe from all notifications at once.
+
 ### Get help with commands
 `!vaccine help`  
 Shows a list of commands you can use.  
@@ -49,6 +59,37 @@ Shows a list of commands you can use.
 ### Get help with a specific command
 `!vaccine help {command}`  
 **command**: The name of the command you need help with.  
+
+## Notifications
+End-users can subscribe to notifications when a city + state has a vaccination available (regardless of provider). However in order to make this work, you (bot admin) need to set up automatic polling timers in the bots configuration for all sites. It's easy though! Here's a sample configuraton of the `polling` section you can use:
+```
+    "polling": {
+        "enabled": false,
+        "postToChannelId": "<A_CHANNEL_ID_HERE_FOR_LOGGING>",
+        "cvs": {
+            "rate": 100000,
+            "commands": [
+                "!vaccine onlyAvailableSchedules cvs ny triggernotifynopost"
+            ]
+        },
+        "nys": {
+            "rate": 100000,
+            "commands": [
+                "!vaccine onlyAvailableSchedules nys ny triggernotifynopost"
+            ]
+        },
+        "nyc": {
+            "rate": 100000,
+            "commands": [
+                "!vaccine onlyAvailableSchedules nyc ny triggernotifynopost"
+            ]
+        }
+    }
+```
+
+The `onlyAvailableSchedules` command is a hidden internal command that will only show sites with available appointments, coupled with a switch parameter: `triggernotifynopost` which will trigger notifications without posting to the status channel. You can add or remove the different providers as needed (e.g.: if you want exclude `cvs` you can remove it from the polling list) but you must use `triggernotifynopost` for the rest in order to fire off the notifications. In this example, it's configured to fire every 30 minutes. This will also message people at all hours of the night.
+
+This feature is on a per-user basis, meaning whoever registers to be notified will be the one that receives the DM.
 
 ## Shortcuts
 One of the most common actions will be to list providers by state/city. For that, the bot has a short-form command:  
