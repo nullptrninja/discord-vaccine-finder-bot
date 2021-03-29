@@ -27,6 +27,11 @@ The bot has a very structured command parser, the general format is:
 `!vaccine COMMAND PARAM1 ... PARAM_N`  
 Certain commands require more than one parameter; all parameters are separated by a space.  If privacy is a concern, your users can DM the bot with the same commands as well.
 
+# Usage Notes (Important!)
+- While this bot was developed primarily for NY residents, at least one provider (as of this update) supports other states: `CVS`. If you're not eligible for NY vaccines, using CVS is the only alternative provider you can use for this bot at this time.  
+   
+- The New York State provider (`NYS`) seems to have adopted some data feed changes that do not accurately reflect whether or not actual vaccines are available so therefore you may get a lot of false positives (alerting you for available sites when the data shows none are actually available). You may want to consider only querying NYS sites manually. For notifications, we suggest NYC and CVS sites only.  
+
 ## Commands
 These are the available commands you can execute within Discord:  
 `schedules`  
