@@ -47,9 +47,9 @@ Shows a list of the available providers. You can use these values in place of an
 `!vaccine notify -a add -s {state} -c {city} [-z {site name}]`
 This command format is different from the rest due to certain parsing requirements. The site parameter (`-z`) is optional. If omitted, the bot will DM you when any site in the specified state + city is available. State is the two-letter state code, while city is very specific to how certain providers list the city in their vaccination site addresses. You can add as many notifications as you'd like. If you want to only be notified if vaccines are available at a specific site, copy and paste the site's name (as listed via `!vaccine schedules` commnad) into the `-z` parameter.
 
-Examples:
-Just by state + city: `!vaccine notify -a add -s ny -c brooklyn`
-By state + city + site: `!vaccine notify -a add -s ny -c manhattan -z East Harlem Action Health Center (Manhattan)`
+Examples:  
+Just by state + city: `!vaccine notify -a add -s ny -c brooklyn`  
+By state + city + site: `!vaccine notify -a add -s ny -c manhattan -z East Harlem Action Health Center (Manhattan)`  
 
 See below for more information on configuration to ensure this feature works.
 
