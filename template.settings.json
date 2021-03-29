@@ -10,26 +10,24 @@
         "shortTriggerWord": "!vac "
     },
     "polling": {
-        "enabled": false,
+        "enabled": true,
         "postToChannelId": "0",
         "cvs": {
-            "rate": 3600000,
+            "rate": 1800000,
             "commands": [
                 "!vaccine onlyAvailableSchedules cvs ny triggernotifynopost"
             ]
         },
         "nys": {
-            "rate": 3600000,
+            "rate": 1800000,
             "commands": [
                 "!vaccine onlyAvailableSchedules nys ny triggernotifynopost"
             ]
         },
         "nyc": {
-            "rate": 3600000,
+            "rate": 1800000,
             "commands": [
-                "!vaccine onlyAvailableSchedules nyc ny brooklyn",
-                "!vaccine onlyAvailableSchedules nyc ny manhattan",
-                "!vaccine onlyAvailableSchedules nyc ny queens"
+                "!vaccine onlyAvailableSchedules nyc ny triggernotifynopost"
             ]
         }
     }
