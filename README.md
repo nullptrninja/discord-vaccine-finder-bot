@@ -19,12 +19,13 @@ This will ensure that the bot can talk to the API server and you should see some
 ## Usage
 The bot has a very structured command parser, the general format is:  
 `!vaccine COMMAND PARAM1 ... PARAM_N`  
-Certain commands require more than one parameter; all parameters are separated by a space.  
+Certain commands require more than one parameter; all parameters are separated by a space.  If privacy is a concern, your users can DM the bot with the same commands as well.
 
 ## Commands
 These are the available commands you can execute within Discord:  
 `schedules`  
 `list`  
+`notify`  
 `help`  
   
 ## Here are the scenarios in which you would use these commands:  
@@ -46,6 +47,10 @@ Shows a list of the available providers. You can use these values in place of an
 `!vaccine notify -a add -s {state} -c {city} [-z {site name}]`
 This command format is different from the rest due to certain parsing requirements. The site parameter (`-z`) is optional. If omitted, the bot will DM you when any site in the specified state + city is available. State is the two-letter state code, while city is very specific to how certain providers list the city in their vaccination site addresses. You can add as many notifications as you'd like. If you want to only be notified if vaccines are available at a specific site, copy and paste the site's name (as listed via `!vaccine schedules` commnad) into the `-z` parameter.
 
+Examples:
+Just by state + city: `!vaccine notify -a add -s ny -c brooklyn`
+By state + city + site: `!vaccine notify -a add -s ny -c manhattan -z East Harlem Action Health Center (Manhattan)`
+
 See below for more information on configuration to ensure this feature works.
 
 ### Remove a notification
@@ -60,8 +65,8 @@ Shows a list of commands you can use.
 `!vaccine help {command}`  
 **command**: The name of the command you need help with.  
 
-## Notifications
-End-users can subscribe to notifications when a city + state has a vaccination available (regardless of provider). However in order to make this work, you (bot admin) need to set up automatic polling timers in the bots configuration for all sites. It's easy though! Here's a sample configuraton of the `polling` section you can use:
+# Notifications
+End-users can subscribe to notifications when a city + state has a vaccination available (across all configured providers). However in order to make this work, you (bot admin) need to set up automatic polling timers in the bots configuration for all sites. It's easy though! Here's a sample configuraton of the `polling` section you can copy pasta into your own:
 ```
     "polling": {
         "enabled": false,
